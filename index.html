@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ronaldos</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-image: url('https://i.imgur.com/m9G0Q6x.png');
+            background-size: cover;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        #clicker {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: transform 0.1s;
+            background-image: url('https://i.imgur.com/DNwLQJN.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        #clicker:active {
+            transform: scale(0.95);
+        }
+        
+        #counter {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4a4a4a;
+            margin: 20px 0;
+        }
+        
+        .upgrades {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .upgrade {
+            width: 150px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .upgrade:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .upgrade img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        
+        .upgrade h3 {
+            margin: 10px 0 5px;
+            color: #333;
+        }
+        
+        .upgrade p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .upgrade .cost {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .upgrade .owned {
+            font-weight: bold;
+            color: #2ecc71;
+        }
+        
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #stats {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        #cps {
+            font-size: 18px;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #ff5252;
+        }
+        
+        #achievements {
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .achievement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .achievement.locked {
+            opacity: 0.5;
+        }
+        
+        .achievement img {
+            width: 50px;
+            height: 50px;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clicker CLT</h1>
+        <p>Clique para ganhar pontos e compre upgrades para ganhar automaticamente!</p>
+        
+        <div id="counter">0 Memes</div>
+        <div id="clicker"></div>
+        <div id="cps">0 por segundo</div>
+        
+        <button id="saveBtn">Salvar Jogo</button>
+        <button id="loadBtn">Carregar Jogo</button>
+        <button id="resetBtn">Resetar Jogo</button>
+        
+        <div class="upgrades">
+            <!-- Upgrades serão adicionados dinamicamente aqui -->
+        </div>
+        
+        <div id="stats">
+            <h2>Estatísticas</h2>
+            <p>Total de cliques: <span id="totalClicks">0</span></p>
+            <p>Total de cliques coletados: <span id="totalMemes">0</span></p>
+            <p>Tempo jogado: <span id="playTime">0 segundos</span></p>
+        </div>
+        
+        <div id="achievements">
+            <h2>Conquistas</h2>
+            <!-- Conquistas serão adicionadas dinamicamente aqui -->
+        </div>
+    </div>
+
+    <audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-09.mp3" preload="auto"></audio>
+    <audio id="upgradeSound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3" preload="auto"></audio>
+    <audio id="achievementSound" src="https://www.soundjay.com/buttons/sounds/button-21.mp3" preload="auto"></audio>
+
+    <script>
+        // Variáveis do jogo
+        let memes = 0;
+        let totalClicks = 0;
+        let totalMemes = 0;
+        let cps = 0; // Cliques por segundo
+        let playTime = 0;
+        let upgrades = [];
+        let achievements = [];
+        let gameInterval;
+        
+        // Elementos do DOM
+        const counterElement = document.getElementById('counter');
+        const clickerElement = document.getElementById('clicker');
+        const cpsElement = document.getElementById('cps');
+        const totalClicksElement = document.getElementById('totalClicks');
+        const totalMemesElement = document.getElementById('totalMemes');
+        const playTimeElement = document.getElementById('playTime');
+        const upgradesContainer = document.querySelector('.upgrades');
+        const achievementsContainer = document.getElementById('achievements');
+        const clickSound = document.getElementById('clickSound');
+        const upgradeSound = document.getElementById('upgradeSound');
+        const achievementSound = document.getElementById('achievementSound');
+        const saveBtn = document.getElementById('saveBtn');
+        const loadBtn = document.getElementById('loadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        // Definir upgrades
+        upgrades = [
+            {
+                id: 1,
+                name: "Doge",
+                description: "Muito cliques, wow!",
+                baseCost: 15,
+                cost: 15,
+                owned: 0,
+                cps: 0.1,
+                image: "https://i.imgur.com/ExdKOOz.png"
+            },
+            {
+                id: 2,
+                name: "Pepe",
+                description: "Feels good man",
+                baseCost: 100,
+                cost: 100,
+                owned: 0,
+                cps: 1,
+                image: "https://i.imgur.com/4A9Qe3a.png"
+            },
+            {
+                id: 3,
+                name: "Trollface",
+                description: "Problema?",
+                baseCost: 1100,
+                cost: 1100,
+                owned: 0,
+                cps: 8,
+                image: "https://i.imgur.com/3CRWQ9h.png"
+            },
+            {
+                id: 4,
+                name: "Wojak",
+                description: "Eu estou farmando memes...",
+                baseCost: 12000,
+                cost: 12000,
+                owned: 0,
+                cps: 47,
+                image: "https://i.imgur.com/3zZ7ZQn.png"
+            },
+            {
+                id: 5,
+                name: "Stonks",
+                description: "Investimento em memes",
+                baseCost: 130000,
+                cost: 130000,
+                owned: 0,
+                cps: 260,
+                image: "https://i.imgur.com/VyYq4zO.png"
+            },
+            {
+                id: 6,
+                name: "Big Chungus",
+                description: "Muito grande, muito meme",
+                baseCost: 1400000,
+                cost: 1400000,
+                owned: 0,
+                cps: 1400,
+                image: "https://i.imgur.com/9JZJQJv.png"
+            },
+            {
+                id: 7,
+                name: "Harold",
+                description: "Esconde a dor dos cliques",
+                baseCost: 20000000,
+                cost: 20000000,
+                owned: 0,
+                cps: 7800,
+                image: "https://i.imgur.com/5ZJZJZJ.png"
+            },
+            {
+                id: 8,
+                name: "Rick Roll",
+                description: "Nunca vai te dar clique",
+                baseCost: 330000000,
+                cost: 330000000,
+                owned: 0,
+                cps: 44000,
+                image: "https://i.imgur.com/VQJZJZJ.png"
+            }
+        ];
+        
+        // Definir conquistas
+        achievements = [
+            {
+                id: 1,
+                name: "Primeiro Meme",
+                description: "Colete seu primeiro meme",
+                condition: (game) => game.totalMemes >= 1,
+                unlocked: false,
+                image: "https://i.imgur.com/DNwLQJN.png"
+            },
+            {
+                id: 2,
+                name: "100 Memes",
+                description: "Colete 100 memes",
+                condition: (game) => game.totalMemes >= 100,
+                unlocked: false,
+                image: "https://i.imgur.com/4A9Qe3a.png"
+            },
+            {
+                id: 3,
+                name: "1K Memes",
+                description: "Colete 1,000 memes",
+                condition: (game) => game.totalMemes >= 1000,
+                unlocked: false,
+                image: "https://i.imgur.com/3CRWQ9h.png"
+            },
+            {
+                id: 4,
+                name: "1M Memes",
+                description: "Colete 1,000,000 memes",
+                condition: (game) => game.totalMemes >= 1000000,
+                unlocked: false,
+                image: "https://i.imgur.com/3zZ7ZQn.png"
+            },
+            {
+                id: 5,
+                name: "Clique Rápido",
+                description: "Faça 100 cliques",
+                condition: (game) => game.totalClicks >= 100,
+                unlocked: false,
+                image: "https://i.imgur.com/VyYq4zO.png"
+            },
+            {
+                id: 6,
+                name: "Viciado em Clicks",
+                description: "Faça 1,000 cliques",
+                condition: (game) => game.totalClicks >= 1000,
+                unlocked: false,
+                image: "https://i.imgur.com/9JZJQJv.png"
+            },
+            {
+                id: 7,
+                name: "Auto Memer",
+                description: "Tenha 10 memes por segundo",
+                condition: (game) => game.cps >= 10,
+                unlocked: false,
+                image: "https://i.imgur.com/5ZJZJZJ.png"
+            },
+            {
+                id: 8,
+                name: "Meme Lord",
+                description: "Tenha 100 memes por segundo",
+                condition: (game) => game.cps >= 100,
+                unlocked: false,
+                image: "https://i.imgur.com/VQJZJZJ.png"
+            }
+        ];
+        
+        // Inicializar o jogo
+        function initGame() {
+            renderUpgrades();
+            renderAchievements();
+            updateUI();
+            
+            // Configurar intervalo do jogo (1 segundo)
+            gameInterval = setInterval(gameTick, 1000);
+            
+            // Configurar temporizador de tempo jogado
+            setInterval(() => {
+                playTime++;
+                playTimeElement.textContent = formatTime(playTime);
+            }, 1000);
+            
+            // Tentar carregar o jogo salvo
+            loadGame();
+        }
+        
+        // Atualização principal do jogo (chamada a cada segundo)
+        function gameTick() {
+            // Adicionar memes baseados no CPS
+            memes += cps;
+            totalMemes += cps;
+            
+            // Verificar conquistas
+            checkAchievements();
+            
+            // Atualizar UI
+            updateUI();
+        }
+        
+        // Clique no meme principal
+        clickerElement.addEventListener('click', () => {
+            memes += 1;
+            totalClicks += 1;
+            totalMemes += 1;
+            
+            // Tocar som de clique
+            clickSound.currentTime = 0;
+            clickSound.play();
+            
+            // Efeito visual
+            clickerElement.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                clickerElement.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Verificar conquistas
+            checkAchievements();
+            
+            // Atualizar UI
+            updateUI();
+        });
+        
+        // Renderizar upgrades na tela
+        function renderUpgrades() {
+            upgradesContainer.innerHTML = '';
+            
+            upgrades.forEach(upgrade => {
+                const upgradeElement = document.createElement('div');
+                upgradeElement.className = `upgrade ${memes < upgrade.cost ? 'disabled' : ''}`;
+                upgradeElement.innerHTML = `
+                    <img src="${upgrade.image}" alt="${upgrade.name}">
+                    <h3>${upgrade.name}</h3>
+                    <p>${upgrade.description}</p>
+                    <p class="cost">Custo: ${formatNumber(upgrade.cost)} memes</p>
+                    <p class="owned">Possuídos: ${upgrade.owned}</p>
+                    <p>Produz: ${upgrade.cps} memes/seg</p>
+                `;
+                
+                upgradeElement.addEventListener('click', () => {
+                    if (memes >= upgrade.cost) {
+                        buyUpgrade(upgrade.id);
+                    }
+                });
+                
+                upgradesContainer.appendChild(upgradeElement);
+            });
+        }
+        
+        // Comprar upgrade
+        function buyUpgrade(upgradeId) {
+            const upgrade = upgrades.find(u => u.id === upgradeId);
+            
+            if (upgrade && memes >= upgrade.cost) {
+                memes -= upgrade.cost;
+                upgrade.owned += 1;
+                cps += upgrade.cps;
+                
+                // Calcular novo custo (aumenta exponencialmente)
+                upgrade.cost = Math.floor(upgrade.baseCost * Math.pow(1.15, upgrade.owned));
+                
+                // Tocar som de upgrade
+                upgradeSound.currentTime = 0;
+                upgradeSound.play();
+                
+                // Atualizar UI
+                updateUI();
+                renderUpgrades();
+            }
+        }
+        
+        // Renderizar conquistas
+        function renderAchievements() {
+            // Filtrar para mostrar apenas as 4 primeiras conquistas (bloqueadas ou não)
+            const visibleAchievements = [...achievements].sort((a, b) => {
+                if (a.unlocked && !b.unlocked) return -1;
+                if (!a.unlocked && b.unlocked) return 1;
+                return a.id - b.id;
+            });
+            
+            achievementsContainer.innerHTML = '<h2>Conquistas</h2>';
+            
+            visibleAchievements.forEach(achievement => {
+                const achievementElement = document.createElement('div');
+                achievementElement.className = `achievement ${achievement.unlocked ? '' : 'locked'}`;
+                achievementElement.innerHTML = `
+                    <img src="${achievement.image}" alt="${achievement.name}">
+                    <div>
+                        <h3>${achievement.unlocked ? achievement.name : '???'}</h3>
+                        <p>${achievement.unlocked ? achievement.description : 'Conquista bloqueada'}</p>
+                    </div>
+                `;
+                
+                achievementsContainer.appendChild(achievementElement);
+            });
+        }
+        
+        // Verificar conquistas
+        function checkAchievements() {
+            let newAchievements = false;
+            
+            achievements.forEach(achievement => {
+                if (!achievement.unlocked && achievement.condition({
+                    memes,
+                    totalClicks,
+                    totalMemes,
+                    cps,
+                    playTime
+                })) {
+                    achievement.unlocked = true;
+                    newAchievements = true;
+                }
+            });
+            
+            if (newAchievements) {
+                // Tocar som de conquista
+                achievementSound.currentTime = 0;
+                achievementSound.play();
+                
+                // Atualizar lista de conquistas
+                renderAchievements();
+            }
+        }
+        
+        // Atualizar elementos da UI
+        function updateUI() {
+            counterElement.textContent = `${formatNumber(memes)} Memes`;
+            cpsElement.textContent = `${formatNumber(cps)} Memes por segundo`;
+            totalClicksElement.textContent = formatNumber(totalClicks);
+            totalMemesElement.textContent = formatNumber(totalMemes);
+            
+            // Atualizar classes de upgrades (habilitado/desabilitado)
+            document.querySelectorAll('.upgrade').forEach((upgradeEl, index) => {
+                if (memes < upgrades[index].cost) {
+                    upgradeEl.classList.add('disabled');
+                } else {
+                    upgradeEl.classList.remove('disabled');
+                }
+            });
+        }
+        
+        // Formatadores
+        function formatNumber(num) {
+            if (num < 1000) return Math.floor(num);
+            if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+            if (num < 1000000000) return (num / 1000000).toFixed(1) + 'M';
+            return (num / 1000000000).toFixed(1) + 'B';
+        }
+        
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hrs > 0 ? hrs + 'h ' : ''}${mins > 0 ? mins + 'm ' : ''}${secs}s`;
+        }
+        
+        // Sistema de salvamento
+        function saveGame() {
+            const gameData = {
+                memes,
+                totalClicks,
+                totalMemes,
+                cps,
+                playTime,
+                upgrades,
+                achievements
+            };
+            
+            localStorage.setItem('memeClickerSave', JSON.stringify(gameData));
+            alert('Jogo salvo com sucesso!');
+        }
+        
+        function loadGame() {
+            const savedData = localStorage.getItem('memeClickerSave');
+            
+            if (savedData) {
+                try {
+                    const gameData = JSON.parse(savedData);
+                    
+                    memes = gameData.memes || 0;
+                    totalClicks = gameData.totalClicks || 0;
+                    totalMemes = gameData.totalMemes || 0;
+                    cps = gameData.cps || 0;
+                    playTime = gameData.playTime || 0;
+                    upgrades = gameData.upgrades || upgrades;
+                    achievements = gameData.achievements || achievements;
+                    
+                    // Atualizar UI
+                    updateUI();
+                    renderUpgrades();
+                    renderAchievements();
+                    
+                    console.log('Jogo carregado com sucesso!');
+                } catch (e) {
+                    console.error('Erro ao carregar jogo:', e);
+                }
+            }
+        }
+        
+        function resetGame() {
+            if (confirm('Tem certeza que deseja resetar o jogo? Todos os progressos serão perdidos.')) {
+                memes = 0;
+                totalClicks = 0;
+                totalMemes = 0;
+                cps = 0;
+                playTime = 0;
+                
+                // Resetar upgrades
+                upgrades.forEach(upgrade => {
+                    upgrade.owned = 0;
+                    upgrade.cost = upgrade.baseCost;
+                });
+                
+                // Resetar conquistas
+                achievements.forEach(achievement => {
+                    achievement.unlocked = false;
+                });
+                
+                // Atualizar UI
+                updateUI();
+                renderUpgrades();
+                renderAchievements();
+                
+                // Remover save
+                localStorage.removeItem('memeClickerSave');
+            }
+        }
+        
+        // Event listeners para botões
+        saveBtn.addEventListener('click', saveGame);
+        loadBtn.addEventListener('click', loadGame);
+        resetBtn.addEventListener('click', resetGame);
+        
+        // Iniciar o jogo quando a página carregar
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
